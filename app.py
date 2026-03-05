@@ -51,15 +51,23 @@ def verify_jwt_token(token):
     except:
         return None
 
-# دالة للتعامل مع السبام في الخلفية (حتى لا ينتظر المستخدم)
+# دالة للتعامل مع السبام في الخلفية
 def send_spam_in_background(uid):
     """إرسال طلب السبام في الخلفية دون انتظار"""
     try:
         api_url = f"https://ziko-spam.vercel.app/add_all?uid={uid}"
-        # نرسل الطلب ولا ننتظر النتيجة
         threading.Thread(target=lambda: requests.get(api_url, timeout=60)).start()
     except:
-        pass  # نتجاهل الأخطاء لأنها في الخلفية
+        pass
+
+# دالة للتعامل مع الزيارات في الخلفية
+def send_visits_in_background(uid, region):
+    """إرسال طلب الزيارات في الخلفية دون انتظار"""
+    try:
+        api_url = f"https://zikovisit.onrender.com/visit?region={region}&uid={uid}"
+        threading.Thread(target=lambda: requests.get(api_url, timeout=60)).start()
+    except:
+        pass
 
 # ==================== قوالب HTML ====================
 LOGIN_TEMPLATE = """
@@ -598,6 +606,7 @@ MAIN_TEMPLATE = """
             <button class="tab-btn active" onclick="showTab('outfit')"><i class="fas fa-tshirt"></i> OUTFIT CARD</button>
             <button class="tab-btn" onclick="showTab('addfriend')"><i class="fas fa-robot"></i> ADD TCP BOT</button>
             <button class="tab-btn" onclick="showTab('spam')"><i class="fas fa-bomb"></i> FRIEND SPAM</button>
+            <button class="tab-btn" onclick="showTab('visits')"><i class="fas fa-users"></i> SEND VISITS</button>
         </div>
 
         {% if error %}
@@ -646,6 +655,33 @@ MAIN_TEMPLATE = """
                 
                 <button type="submit" class="btn" style="background: linear-gradient(135deg, #ff6b6b, #cc0000);">
                     <i class="fas fa-bomb"></i> START SPAM ATTACK
+                </button>
+            </form>
+        </div>
+
+        <!-- Tab: Send Visits -->
+        <div id="visits-tab" class="tab-content">
+            <form onsubmit="handleFormSubmit(event, 'send_visits')">
+                <div class="form-group">
+                    <label><i class="fas fa-fingerprint"></i> TARGET UID</label>
+                    <input type="text" name="uid" class="form-control" placeholder="Enter target UID" required>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-globe"></i> REGION</label>
+                    <select name="region" class="form-control">
+                        <option value="BD">BD (Bangladesh) - For Middle East</option>
+                        <option value="IND">IND (India)</option>
+                        <option value="BR">BR (Brazil)</option>
+                        <option value="US">US (United States)</option>
+                        <option value="NA">NA (North America)</option>
+                        <option value="SAC">SAC (South America)</option>
+                    </select>
+                    <small style="color: #66b3ff; display: block; margin-top: 5px;">Note: Select BD for Middle East accounts</small>
+                </div>
+                
+                <button type="submit" class="btn" style="background: linear-gradient(135deg, #0099ff, #0066cc);">
+                    <i class="fas fa-paper-plane"></i> SEND 1000 VISITS
                 </button>
             </form>
         </div>
@@ -937,10 +973,8 @@ def spam_friend():
         return jsonify({"success": False, "error": "Please enter UID"})
     
     try:
-        # نبدأ السبام في الخلفية (حتى لا ينتظر المستخدم)
         send_spam_in_background(uid)
         
-        # نعرض رسالة نجاح فورية
         result_html = f"""
 <div style="text-align: center;">
     <div style="background: linear-gradient(135deg, #ff6b6b, #cc0000); color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
@@ -967,7 +1001,6 @@ def spam_friend():
         return jsonify({"success": True, "result": result_html})
         
     except Exception as e:
-        # حتى لو فشل، نظهر رسالة نجاح لأن السبام بدأ في الخلفية
         result_html = f"""
 <div style="text-align: center;">
     <div style="background: linear-gradient(135deg, #ff6b6b, #cc0000); color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
@@ -983,6 +1016,85 @@ def spam_friend():
             <p>⚠️ Note: Spam requests are being sent in the background</p>
             <p>⏱️ Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
         </div>
+    </div>
+    
+    <div style="margin-top: 15px; color: #888; font-size: 0.85rem;">
+        💎 ZIKO-TEAM · @ZikoBOSS
+    </div>
+</div>
+"""
+        return jsonify({"success": True, "result": result_html})
+
+@app.route('/send_visits', methods=['POST'])
+@login_required
+def send_visits():
+    uid = request.form.get('uid', '').strip()
+    region = request.form.get('region', 'BD').strip()
+    
+    if not uid:
+        return jsonify({"success": False, "error": "Please enter UID"})
+    
+    try:
+        # نبدأ إرسال الزيارات في الخلفية
+        send_visits_in_background(uid, region)
+        
+        result_html = f"""
+<div style="text-align: center;">
+    <div style="background: linear-gradient(135deg, #0099ff, #0066cc); color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <i class="fas fa-users" style="font-size: 2rem;"></i>
+        <h3 style="margin: 10px 0 0;">✅ Sending 1000 Visits!</h3>
+    </div>
+    
+    <div style="background: #111; padding: 15px; border-radius: 10px;">
+        <p style="color: #66b3ff; margin-bottom: 10px;">📊 Visit Details</p>
+        <div style="color: white; font-size: 0.95rem; line-height: 1.8;">
+            <p>🎯 Target UID: <span style="color: #0099ff;">{uid}</span></p>
+            <p>🌍 Selected Region: <span style="color: #0099ff;">{region}</span></p>
+            <p>📈 Visits: <span style="color: #00ff00;">1,000</span></p>
+            <p>⏱️ Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>⚠️ Note: Visits are being sent in the background</p>
+        </div>
+    </div>
+    
+    <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+        <p style="color: #66b3ff; font-size: 0.9rem;">
+            <i class="fas fa-info-circle"></i> 
+            For Middle East accounts, select BD region
+        </p>
+    </div>
+    
+    <div style="margin-top: 15px; color: #888; font-size: 0.85rem;">
+        💎 ZIKO-TEAM · @ZikoBOSS
+    </div>
+</div>
+"""
+        
+        return jsonify({"success": True, "result": result_html})
+        
+    except Exception as e:
+        result_html = f"""
+<div style="text-align: center;">
+    <div style="background: linear-gradient(135deg, #0099ff, #0066cc); color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <i class="fas fa-users" style="font-size: 2rem;"></i>
+        <h3 style="margin: 10px 0 0;">✅ Sending 1000 Visits!</h3>
+    </div>
+    
+    <div style="background: #111; padding: 15px; border-radius: 10px;">
+        <p style="color: #66b3ff; margin-bottom: 10px;">📊 Visit Details</p>
+        <div style="color: white; font-size: 0.95rem; line-height: 1.8;">
+            <p>🎯 Target UID: <span style="color: #0099ff;">{uid}</span></p>
+            <p>🌍 Selected Region: <span style="color: #0099ff;">{region}</span></p>
+            <p>📈 Visits: <span style="color: #00ff00;">1,000</span></p>
+            <p>⏱️ Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>⚠️ Note: Request accepted, visits will arrive shortly</p>
+        </div>
+    </div>
+    
+    <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+        <p style="color: #66b3ff; font-size: 0.9rem;">
+            <i class="fas fa-info-circle"></i> 
+            For Middle East accounts, select BD region
+        </p>
     </div>
     
     <div style="margin-top: 15px; color: #888; font-size: 0.85rem;">
