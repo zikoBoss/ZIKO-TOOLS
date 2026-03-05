@@ -9,17 +9,16 @@ from io import BytesIO
 import base64 as b64_encode
 from dotenv import load_dotenv
 import jwt
-import secrets
 
 # تحميل المتغيرات من ملف .env
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'ziko_advanced_secret_2026')
+app.secret_key = os.getenv('SECRET_KEY')
 
 # بيانات تسجيل الدخول من متغيرات البيئة
-USERNAME = os.getenv('USERNAME', 'ZikoBoss')
-PASSWORD = os.getenv('PASSWORD', 'Ziko@2006V1')
+USERNAME = os.getenv('USERNAME', 'ZAKARIA')
+PASSWORD = os.getenv('PASSWORD', 'ZAKARIA@APISV1')
 TEAM_NAME = "ZIKO-TEAM"
 
 # قنوات المطور
@@ -28,7 +27,7 @@ TELEGRAM_URL = "https://t.me/Ziko_Tim"
 FACEBOOK_URL = "https://www.facebook.com/profile.php?id=61586247175238"
 DEVELOPER = "@ZikoBOSS"
 
-# المفتاح السري للـ JWT (نفسه في الموقع الرئيسي)
+# المفتاح السري للـ JWT
 JWT_SECRET = os.getenv('JWT_SECRET', 'ziko_advanced_secret_key_2026')
 
 # ==================== دوال المساعدة ====================
@@ -44,14 +43,11 @@ def verify_jwt_token(token):
     """التحقق من صحة التوكن القادم من الموقع الرئيسي"""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
-        # التحقق من المصدر
         if payload.get('source') != 'ziko-main':
             return None
         return payload.get('user_id')
-    except jwt.ExpiredSignatureError:
-        return None  # توكن منتهي الصلاحية
     except:
-        return None  # توكن غير صالح
+        return None
 
 # ==================== قوالب HTML ====================
 LOGIN_TEMPLATE = """
@@ -60,7 +56,7 @@ LOGIN_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡️Ziko-Advanced⚡️ - Login</title>
+    <title>⚡️Advanced⚡️ - Login</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -241,7 +237,7 @@ MAIN_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>⚡️Ziko-Advanced⚡️ - Pro Tools</title>
+    <title>⚡️Advanced⚡️ - Pro Tools</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -570,7 +566,7 @@ MAIN_TEMPLATE = """
         <a href="/logout" class="logout-btn">LOGOUT</a>
         
         <div class="header">
-            <h1>⚡️Ziko-Advanced⚡️</h1>
+            <h1>⚡️Advanced⚡️</h1>
             <div class="team">{{ team_name }}</div>
             <div class="user-badge">
                 <i class="fas fa-user"></i> {{ username }}
@@ -579,6 +575,8 @@ MAIN_TEMPLATE = """
 
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('outfit')"><i class="fas fa-tshirt"></i> OUTFIT CARD</button>
+            <button class="tab-btn" onclick="showTab('addfriend')"><i class="fas fa-user-plus"></i> ADD FRIEND</button>
+            <button class="tab-btn" onclick="showTab('spam')"><i class="fas fa-bomb"></i> FRIEND SPAM</button>
         </div>
 
         {% if error %}
@@ -597,6 +595,36 @@ MAIN_TEMPLATE = """
                 
                 <button type="submit" class="btn">
                     <i class="fas fa-magic"></i> GENERATE OUTFIT CARD
+                </button>
+            </form>
+        </div>
+
+        <!-- Tab: Add Friend -->
+        <div id="addfriend-tab" class="tab-content">
+            <form onsubmit="handleFormSubmit(event, 'add_friend')">
+                <div class="form-group">
+                    <label><i class="fas fa-fingerprint"></i> TARGET UID</label>
+                    <input type="text" name="uid" class="form-control" placeholder="Enter friend's UID" required>
+                    <small style="color: #66b3ff; display: block; margin-top: 5px;">Send a friend request to this UID</small>
+                </div>
+                
+                <button type="submit" class="btn" style="background: linear-gradient(135deg, #0099ff, #0066cc);">
+                    <i class="fas fa-user-plus"></i> SEND FRIEND REQUEST
+                </button>
+            </form>
+        </div>
+
+        <!-- Tab: Friend Spam -->
+        <div id="spam-tab" class="tab-content">
+            <form onsubmit="handleFormSubmit(event, 'spam_friend')">
+                <div class="form-group">
+                    <label><i class="fas fa-fingerprint"></i> TARGET UID</label>
+                    <input type="text" name="uid" class="form-control" placeholder="Enter target UID" required>
+                    <small style="color: #ff6b6b; display: block; margin-top: 5px;">⚠️ Warning: This will send multiple friend requests</small>
+                </div>
+                
+                <button type="submit" class="btn" style="background: linear-gradient(135deg, #ff6b6b, #cc0000);">
+                    <i class="fas fa-bomb"></i> START SPAM ATTACK
                 </button>
             </form>
         </div>
@@ -621,7 +649,10 @@ MAIN_TEMPLATE = """
     </div>
 
     <script>
+        let currentTab = 'outfit';
+        
         function showTab(tabName) {
+            currentTab = tabName;
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -678,7 +709,7 @@ MAIN_TEMPLATE = """
         
         function shareResult(platform, uid) {
             const url = window.location.href;
-            const text = `Check out this Free Fire outfit card for UID: ${uid} from ⚡️Ziko-Advanced⚡️!`;
+            const text = `Check out this Free Fire outfit card for UID: ${uid} from ⚡️Advanced⚡️!`;
             
             let shareUrl = '';
             
@@ -716,18 +747,15 @@ MAIN_TEMPLATE = """
 # ==================== Routes ====================
 @app.route('/')
 def home():
-    # التحقق من وجود توكن من الموقع الرئيسي
     token = request.args.get('token')
     
     if token:
         user_id = verify_jwt_token(token)
         if user_id:
-            # توكن صحيح - نسجل دخول المستخدم
             session['logged_in'] = True
             session['username'] = user_id
             return redirect(url_for('index'))
         else:
-            # توكن غير صالح
             return render_template_string("""
             <html>
             <head><title>Access Denied</title></head>
@@ -739,7 +767,6 @@ def home():
             </html>
             """)
     
-    # إذا كان المستخدم مسجل دخوله بالفعل
     if 'logged_in' in session:
         return redirect(url_for('index'))
     
@@ -791,15 +818,12 @@ def get_outfit_card():
         return jsonify({"success": False, "error": "Please enter UID"})
     
     try:
-        # رابط API الجديد
         api_url = f"https://outfit-by-vaibhav.vercel.app/outfit-card?uid={uid}"
-        
         response = requests.get(api_url, timeout=15)
         
         if response.status_code != 200:
             return jsonify({"success": False, "error": "Failed to fetch outfit card"})
         
-        # تحويل الصورة إلى base64
         image_base64 = b64_encode.b64encode(response.content).decode('utf-8')
         image_data = f"data:image/png;base64,{image_base64}"
         
@@ -814,7 +838,6 @@ def get_outfit_card():
             <img src="{image_data}" alt="Outfit Card" style="max-width: 100%; height: auto; border-radius: 10px;">
         </div>
         
-        <!-- أزرار المشاركة -->
         <div class="share-buttons">
             <button onclick="shareResult('whatsapp', '{uid}')" class="share-btn whatsapp">
                 <i class="fab fa-whatsapp"></i> WhatsApp
@@ -831,6 +854,95 @@ def get_outfit_card():
         </div>
     </div>
     <div style="margin-top: 10px; color: #888; font-size: 0.85rem;">
+        💎 ZIKO-TEAM · @ZikoBOSS
+    </div>
+</div>
+"""
+        
+        return jsonify({"success": True, "result": result_html})
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/add_friend', methods=['POST'])
+@login_required
+def add_friend():
+    uid = request.form.get('uid', '').strip()
+    
+    if not uid:
+        return jsonify({"success": False, "error": "Please enter UID"})
+    
+    try:
+        api_url = f"https://ziko-api.vercel.app/add?uid={uid}"
+        response = requests.get(api_url, timeout=15)
+        
+        if response.status_code != 200:
+            return jsonify({"success": False, "error": "Failed to send friend request"})
+        
+        data = response.json()
+        
+        result_html = f"""
+<div style="text-align: center;">
+    <div style="background: linear-gradient(135deg, #0099ff, #0066cc); color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <i class="fas fa-user-plus" style="font-size: 2rem;"></i>
+        <h3 style="margin: 10px 0 0;">✅ Friend Request Sent!</h3>
+    </div>
+    
+    <div style="background: #111; padding: 15px; border-radius: 10px;">
+        <p style="color: #66b3ff; margin-bottom: 10px;">📊 Request Details</p>
+        <div style="color: white; font-size: 0.95rem; line-height: 1.8;">
+            <p>🆔 UID: <span style="color: #0099ff;">{uid}</span></p>
+            <p>📈 Status: <span style="color: #00ff00;">Success</span></p>
+            <p>⏱️ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+    </div>
+    
+    <div style="margin-top: 15px; color: #888; font-size: 0.85rem;">
+        💎 ZIKO-TEAM · @ZikoBOSS
+    </div>
+</div>
+"""
+        
+        return jsonify({"success": True, "result": result_html})
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/spam_friend', methods=['POST'])
+@login_required
+def spam_friend():
+    uid = request.form.get('uid', '').strip()
+    
+    if not uid:
+        return jsonify({"success": False, "error": "Please enter UID"})
+    
+    try:
+        api_url = f"https://ziko-spam.vercel.app/add_all?uid={uid}"
+        response = requests.get(api_url, timeout=15)
+        
+        if response.status_code != 200:
+            return jsonify({"success": False, "error": "Failed to send spam requests"})
+        
+        data = response.json()
+        
+        result_html = f"""
+<div style="text-align: center;">
+    <div style="background: linear-gradient(135deg, #ff6b6b, #cc0000); color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <i class="fas fa-bomb" style="font-size: 2rem;"></i>
+        <h3 style="margin: 10px 0 0;">💥 Spam Attack Started!</h3>
+    </div>
+    
+    <div style="background: #111; padding: 15px; border-radius: 10px;">
+        <p style="color: #66b3ff; margin-bottom: 10px;">📊 Spam Details</p>
+        <div style="color: white; font-size: 0.95rem; line-height: 1.8;">
+            <p>🎯 Target UID: <span style="color: #0099ff;">{uid}</span></p>
+            <p>📈 Status: <span style="color: #00ff00;">Active</span></p>
+            <p>⚠️ Note: This may take a few moments</p>
+            <p>⏱️ Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+    </div>
+    
+    <div style="margin-top: 15px; color: #888; font-size: 0.85rem;">
         💎 ZIKO-TEAM · @ZikoBOSS
     </div>
 </div>
